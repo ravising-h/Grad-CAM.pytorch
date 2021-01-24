@@ -10,6 +10,9 @@ import argparse
 import multiprocessing as mp
 import os
 
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 import cv2
 import detectron2.data.transforms as T
 import numpy as np
@@ -81,7 +84,7 @@ def save_image(image_dicts, input_image_name, layer_name, network='retinanet', o
         else:
             io.imsave(os.path.join(output_dir,
                                    '{}-{}-{}-{}.jpg'.format(prefix, network, layer_name, key)),
-                      image)
+                      (255 * image).astype(np.uint8) )
 
 
 def get_parser():
@@ -102,7 +105,7 @@ def get_parser():
     parser.add_argument(
         "--confidence-threshold",
         type=float,
-        default=0.5,
+        default=0.2,
         help="Minimum score for instance predictions to be shown",
     )
     parser.add_argument(
@@ -117,19 +120,23 @@ def get_parser():
 
 
 def main(args):
+    from detectron2.data.datasets import register_coco_instances
+    register_coco_instances("Dent_Detection_train", {}, "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/annotations/instance_train2017.json", "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/JPEGImages")
+    register_coco_instances("Dent_Detection_test", {}, "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/annotations/instance_val2017.json", "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/JPEGImages")
+    MetadataCatalog.get("Dent_Detection_train").thing_classes = ['Dent']
     setup_logger(name="fvcore")
     logger = setup_logger()
     logger.info("Arguments: " + str(args))
 
     cfg = setup_cfg(args)
     print(cfg)
-    # 构建模型
+    
     model = build_model(cfg)
-    # 加载权重
+
     checkpointer = DetectionCheckpointer(model)
     checkpointer.load(cfg.MODEL.WEIGHTS)
 
-    # 加载图像
+
     path = os.path.expanduser(args.input)
     original_image = read_image(path, format="BGR")
     height, width = original_image.shape[:2]
@@ -142,34 +149,50 @@ def main(args):
     inputs = {"image": image, "height": height, "width": width}
 
     # Grad-CAM
-    layer_name = args.layer_name
-    grad_cam = GradCAM(model, layer_name)
-    mask, box, class_id = grad_cam(inputs)  # cam mask
-    grad_cam.remove_handlers()
+    img_grid = [0]*18
+    for ly in range(8):
+        layer_name = f'head.cls_subnet.{ly}'
+        grad_cam = GradCAM(model, layer_name)
+        mask, box, class_id = grad_cam(inputs)  # cam mask
+        grad_cam.remove_handlers()
 
-    #
-    image_dict = {}
-    img = original_image[..., ::-1]
-    x1, y1, x2, y2 = box
-    image_dict['predict_box'] = img[y1:y2, x1:x2]
-    image_cam, image_dict['heatmap'] = gen_cam(img[y1:y2, x1:x2], mask[y1:y2, x1:x2])
+        #
+        image_dict = {}
+        img = original_image[..., ::-1]
+        x1, y1, x2, y2 = box
+        image_dict['predict_box'] = img[y1:y2, x1:x2]
+        img_grid[0], img_grid[9] = image_dict['predict_box'] , image_dict['predict_box'] 
+        image_cam, image_dict['heatmap'] = gen_cam(img[y1:y2, x1:x2], mask[y1:y2, x1:x2])
+        img_grid[ly+1] = image_dict['heatmap']
+        
+        # Grad-CAM++
+        grad_cam_plus_plus = GradCamPlusPlus(model, layer_name)
+        mask_plus_plus = grad_cam_plus_plus(inputs)  # cam mask
 
-    # Grad-CAM++
-    grad_cam_plus_plus = GradCamPlusPlus(model, layer_name)
-    mask_plus_plus = grad_cam_plus_plus(inputs)  # cam mask
+        _, image_dict['heatmap++'] = gen_cam(img[y1:y2, x1:x2], mask_plus_plus[y1:y2, x1:x2])
+        img_grid[ly+9] = image_dict['heatmap++']
+        grad_cam_plus_plus.remove_handlers()
 
-    _, image_dict['heatmap++'] = gen_cam(img[y1:y2, x1:x2], mask_plus_plus[y1:y2, x1:x2])
-    grad_cam_plus_plus.remove_handlers()
+        # 获取类别名称
+        meta = MetadataCatalog.get(
+            cfg.DATASETS.TEST[0] if len(cfg.DATASETS.TEST) else "__unused"
+        )
+        label = meta.thing_classes[class_id]
 
-    # 获取类别名称
-    meta = MetadataCatalog.get(
-        cfg.DATASETS.TEST[0] if len(cfg.DATASETS.TEST) else "__unused"
-    )
-    label = meta.thing_classes[class_id]
+        print("label:{}".format(label))
+        
+        fig = plt.figure(figsize=(20., 6.))
+        grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                         nrows_ncols=(2, 9),  # creates 2x2 grid of axes
+                         axes_pad=0.1,  # pad between axes in inch.
+                         )
 
-    print("label:{}".format(label))
-
-    save_image(image_dict, os.path.basename(path), args.layer_name)
+        for ax, im_ in zip(grid, img_grid):
+            # Iterating over the grid returns the Axes.
+            ax.imshow(cv2.addWeighted(im_, 0.6, img_grid[0], 0.4, 0.2))
+           
+        plt.savefig(os.path.join(output_dir, f'{os.path.basename(path)}-grid.jpg'))
+        save_image(image_dict, os.path.basename(path), args.layer_name)
 
 
 if __name__ == "__main__":
