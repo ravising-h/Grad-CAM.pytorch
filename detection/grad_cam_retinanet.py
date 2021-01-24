@@ -58,7 +58,7 @@ class GradCAM(object):
         :return:
         """
         self.net.zero_grad()
-        output = self.net.predict([inputs])
+        output = self.net([inputs])
         print(output)
         score = output[0]['instances'].scores[index]
         feature_level = output[0]['instances'].feature_levels[index]  # box来自第几层feature map
@@ -98,7 +98,7 @@ class GradCamPlusPlus(GradCAM):
         :return:
         """
         self.net.zero_grad()
-        output = self.net.predict([inputs])
+        output = self.net([inputs])
         print(output)
         score = output[0]['instances'].scores[index]
         feature_level = output[0]['instances'].feature_levels[index]  # box来自第几层feature map
