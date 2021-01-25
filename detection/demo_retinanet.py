@@ -134,7 +134,7 @@ def main(args):
     model = build_model(cfg)
 
     checkpointer = DetectionCheckpointer(model)
-    checkpointer.load('/content/drive/MyDrive/Damage/model/BASELINE/Retina/model_final.pth')
+    checkpointer.load(cfg.MODEL.WEIGHTS)
 
 
     path = os.path.expanduser(args.input)
@@ -179,7 +179,7 @@ def main(args):
         )
         label = meta.thing_classes[class_id]
 
-        print("label:{}".format(label))
+    print("label:{}".format(label))
         
     fig = plt.figure(figsize=(20., 6.))
     grid = ImageGrid(fig, 111,  # similar to subplot(111)
