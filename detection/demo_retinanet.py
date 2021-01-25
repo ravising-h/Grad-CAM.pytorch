@@ -150,7 +150,7 @@ def main(args):
 
     # Grad-CAM
     img_grid = [0]*18
-    for ly in tqdm(range(8)):
+    for ly in tqdm(range(8),  desc ="LAYER BY LAYER"):
         layer_name = f'head.cls_subnet.{ly}'
         grad_cam = GradCAM(model, layer_name)
         mask, box, class_id = grad_cam(inputs)  # cam mask
@@ -163,14 +163,14 @@ def main(args):
         image_dict['predict_box'] = img[y1:y2, x1:x2]
         img_grid[0], img_grid[9] = image_dict['predict_box'] , image_dict['predict_box'] 
         image_cam, image_dict['heatmap'] = gen_cam(img[y1:y2, x1:x2], mask[y1:y2, x1:x2])
-        img_grid[ly+1] = image_dict['heatmap']
+        img_grid[ly+1] = (image_dict['heatmap']*255).astype(np.uint8)
         
         # Grad-CAM++
         grad_cam_plus_plus = GradCamPlusPlus(model, layer_name)
         mask_plus_plus = grad_cam_plus_plus(inputs)  # cam mask
 
         _, image_dict['heatmap++'] = gen_cam(img[y1:y2, x1:x2], mask_plus_plus[y1:y2, x1:x2])
-        img_grid[ly+9] = image_dict['heatmap++']
+        img_grid[ly+9] = (image_dict['heatmap++']*255).astype(np.uint8)
         grad_cam_plus_plus.remove_handlers()
 
         # 获取类别名称
