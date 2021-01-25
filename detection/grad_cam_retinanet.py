@@ -26,7 +26,7 @@ class GradCAM(object):
 
     def _get_features_hook(self, module, input, output):
         self.feature.append(output)  # 不同层级特征
-        print("feature shape:{}".format(output.size()))
+        # print("feature shape:{}".format(output.size()))
 
     def _get_grads_hook(self, module, input_grad, output_grad):
         """
@@ -38,7 +38,7 @@ class GradCAM(object):
         :return:
         """
         self.gradient.insert(0, output_grad[0])  # 梯度的顺序反的
-        print("gradient shape:{}".format(output_grad[0].size()))
+        # print("gradient shape:{}".format(output_grad[0].size()))
 
     def _register_hook(self):
         for (name, module) in self.net.named_modules():
@@ -59,7 +59,7 @@ class GradCAM(object):
         """
         self.net.zero_grad()
         output = self.net([inputs])
-        print(output)
+        # print(output)
         score = output[0]['instances'].scores[index]
         feature_level = output[0]['instances'].feature_levels[index]  # box来自第几层feature map
         score.backward()
@@ -99,7 +99,7 @@ class GradCamPlusPlus(GradCAM):
         """
         self.net.zero_grad()
         output = self.net([inputs])
-        print(output)
+        # print(output)
         score = output[0]['instances'].scores[index]
         feature_level = output[0]['instances'].feature_levels[index]  # box来自第几层feature map
         score.backward()
