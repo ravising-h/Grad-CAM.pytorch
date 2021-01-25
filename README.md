@@ -278,7 +278,7 @@ git clone https://github.com/facebookresearch/detectron2.git
 b) 修改`detectron2/modeling/meta_arch/retinanet.py` 文件中的`inference_single_image`函数，主要是增加feature level 索引，记录分值高的预测边框是由第几层feature map生成的；修改后的`inference_single_image`函数如下：
 
 ```python
-    def inference_single_image(self, anchors, box_cls, box_delta,  image_size):
+def inference_single_image(self, anchors, box_cls, box_delta,  image_size):
         """
         Single-image inference. Return bounding-box detection results by thresholding
         on scores and applying non-maximum suppression (NMS).
@@ -306,19 +306,19 @@ b) 修改`detectron2/modeling/meta_arch/retinanet.py` 文件中的`inference_sin
             box_cls_i = box_cls_i.flatten().sigmoid_()
 
             # Keep top k top scoring indices only.
-            num_topk = min(self.topk_candidates, box_reg_i.size(0))
+            num_topk = min(self.test_topk_candidates, box_reg_i.size(0))
             # torch.sort is actually faster than .topk (at least on GPUs)
             predicted_prob, topk_idxs = box_cls_i.sort(descending=True)
             predicted_prob = predicted_prob[:num_topk]
             topk_idxs = topk_idxs[:num_topk]
 
             # filter out the proposals with low confidence score
-            keep_idxs = predicted_prob > self.score_threshold
+            keep_idxs = predicted_prob > self.test_score_thresh
             predicted_prob = predicted_prob[keep_idxs]
             topk_idxs = topk_idxs[keep_idxs]
 
-            anchor_idxs = topk_idxs // self.num_classes
-            classes_idxs = topk_idxs % self.num_classes
+            anchor_idxs  =  topk_idxs  //  self.num_classes 
+            classes_idxs  =  topk_idxs  %  self.num_classes
 
             box_reg_i = box_reg_i[anchor_idxs]
             anchors_i = anchors_i[anchor_idxs]
@@ -333,7 +333,7 @@ b) 修改`detectron2/modeling/meta_arch/retinanet.py` 文件中的`inference_sin
         boxes_all, scores_all, class_idxs_all, feature_level_all = [
             cat(x) for x in [boxes_all, scores_all, class_idxs_all, feature_level_all]
         ]
-        keep = batched_nms(boxes_all, scores_all, class_idxs_all, self.nms_threshold)
+        keep = batched_nms(boxes_all, scores_all, class_idxs_all, self.test_nms_thresh)
         keep = keep[: self.max_detections_per_image]
 
         result = Instances(image_size)
