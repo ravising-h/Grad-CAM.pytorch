@@ -123,7 +123,7 @@ def main(args):
     from detectron2.data.datasets import register_coco_instances
     register_coco_instances("Dent_Detection_train", {}, "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/annotations/instance_train2017.json", "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/JPEGImages")
     register_coco_instances("Dent_Detection_test", {}, "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/annotations/instance_val2017.json", "/content/drive/MyDrive/Damage/Dataset/coco_15k_balanced/JPEGImages")
-    MetadataCatalog.get("Dent_Detection_train").thing_classes = ['Dent']
+    MetadataCatalog.get("Dent_Detection_test").thing_classes = ['Dent']
     setup_logger(name="fvcore")
     logger = setup_logger()
     logger.info("Arguments: " + str(args))
