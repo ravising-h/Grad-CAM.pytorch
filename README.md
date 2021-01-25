@@ -278,7 +278,7 @@ git clone https://github.com/facebookresearch/detectron2.git
 b) 修改`detectron2/modeling/meta_arch/retinanet.py` 文件中的`inference_single_image`函数，主要是增加feature level 索引，记录分值高的预测边框是由第几层feature map生成的；修改后的`inference_single_image`函数如下：
 
 ```python
-    def inference_single_image(self, box_cls, box_delta, anchors, image_size):
+    def inference_single_image(self, anchors, box_cls, box_delta,  image_size):
         """
         Single-image inference. Return bounding-box detection results by thresholding
         on scores and applying non-maximum suppression (NMS).
