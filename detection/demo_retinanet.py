@@ -10,7 +10,7 @@ import argparse
 import multiprocessing as mp
 import os
 
-
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 import cv2
@@ -37,7 +37,7 @@ def setup_cfg(args):
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     # Set score_threshold for builtin models
-    cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
+    cfg.MODEL.RETINANET.SCORE_THRESH_TEST = 0.25
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = args.confidence_threshold
     cfg.freeze()
@@ -134,7 +134,7 @@ def main(args):
     model = build_model(cfg)
 
     checkpointer = DetectionCheckpointer(model)
-    checkpointer.load(cfg.MODEL.WEIGHTS)
+    checkpointer.load('/content/drive/MyDrive/Damage/model/BASELINE/Retina/model_final.pth')
 
 
     path = os.path.expanduser(args.input)
@@ -150,7 +150,7 @@ def main(args):
 
     # Grad-CAM
     img_grid = [0]*18
-    for ly in range(8):
+    for ly in tqdm(range(8)):
         layer_name = f'head.cls_subnet.{ly}'
         grad_cam = GradCAM(model, layer_name)
         mask, box, class_id = grad_cam(inputs)  # cam mask
@@ -181,18 +181,18 @@ def main(args):
 
         print("label:{}".format(label))
         
-        fig = plt.figure(figsize=(20., 6.))
-        grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                         nrows_ncols=(2, 9),  # creates 2x2 grid of axes
-                         axes_pad=0.1,  # pad between axes in inch.
-                         )
+    fig = plt.figure(figsize=(20., 6.))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                        nrows_ncols=(2, 9),  # creates 2x2 grid of axes
+                        axes_pad=0.1,  # pad between axes in inch.
+                        )
 
-        for ax, im_ in zip(grid, img_grid):
-            # Iterating over the grid returns the Axes.
-            ax.imshow(cv2.addWeighted(im_, 0.6, img_grid[0], 0.4, 0.2))
-           
-        plt.savefig(os.path.join(output_dir, f'{os.path.basename(path)}-grid.jpg'))
-        save_image(image_dict, os.path.basename(path), args.layer_name)
+    for ax, im_ in zip(grid, img_grid):
+        # Iterating over the grid returns the Axes.
+        ax.imshow(cv2.addWeighted(im_, 0.6, img_grid[0], 0.4, 0.2))
+        
+    plt.savefig(os.path.join(output_dir, f'{os.path.basename(path)}-grid.jpg'))
+    # save_image(image_dict, os.path.basename(path), args.layer_name)
 
 
 if __name__ == "__main__":
